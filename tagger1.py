@@ -16,4 +16,6 @@ if __name__ == '__main__':
     dev_pos, dev_labels_pos = read_file("data/pos/dev", parse_tag_reading, " ")
 
     dev_losses, dev_accs = train_model(zip(train_pos, labels_pos), zip(dev_pos, dev_labels_pos), network, trainer, W2I,
-                                       T2I, 100)
+                                       T2I, 20)
+    plot_results(dev_losses, "Model Loss", "Loss")
+    plot_results(dev_accs, "Model Accuracy", "Accuracy")

@@ -1,5 +1,6 @@
 import dynet as dy
 import numpy as np
+import matplotlib.pyplot as plt
 
 def test_data(data, network, W2I, T2I):
     total_loss = 0.0
@@ -35,7 +36,7 @@ def train_model(train, dev, network, trainer, W2I, T2I, num_iterations):
             words_nums = [tuple([W2I[word] if word in W2I else W2I["unknown"] for word in words[i - 2:i + 3]]) for i in
                           range(2, num_words)]
             labels_num = np.array([T2I[label] for label in labels[2:-2]])
-            loss, prediction = network.forward(words_nums, labels_num)
+            loss, prediction = network.forward(words_nums, labels_num, 0.05)
             correct += np.sum(prediction == labels_num)
             total += prediction.size
             total_loss += loss.value()
@@ -53,3 +54,12 @@ def train_model(train, dev, network, trainer, W2I, T2I, num_iterations):
         print "Dev Accuracy:", dev_acc
 
     return dev_losses, dev_accs
+
+# Plots the result of the training.
+def plot_results(history, title, ylabel, xlabel='Epoch'):
+    plt.plot(history)
+    plt.title(title)
+    plt.ylabel(ylabel)
+    plt.xlabel(xlabel)
+    plt.show()
+
