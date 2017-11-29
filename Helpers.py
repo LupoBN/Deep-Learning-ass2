@@ -2,58 +2,87 @@ import dynet as dy
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def test_data(data, network, W2I, T2I):
     total_loss = 0.0
     correct = 0.0
     total = 0.0
+    totalacc = 0.0
+
     for words, labels in data:
         dy.renew_cg()
         num_words = len(words) - 2
-        words_nums = [tuple([W2I[word] if word in W2I else W2I["unknown"] for word in words[i - 2:i + 3]]) for i in
+        words_nums = [tuple([W2I[word] if word in W2I else W2I["UUUNKKK"] for word in words[i - 2:i + 3]]) for i in
                       range(2, num_words)]
         labels_num = np.array([T2I[label] for label in labels[2:-2]])
         loss, prediction = network.forward(words_nums, labels_num)
+        if "O" in T2I:
+            prediction = np.where(prediction == T2I["O"], -1, prediction)
+        o_in_sentence = 0.0
+        unique, counts = np.unique(prediction, return_counts=True)
+        pc = dict(zip(unique, counts))
+
+        if -1 in pc:
+            o_in_sentence = pc[-1]
+
         correct += np.sum(prediction == labels_num)
         total += prediction.size
+        totalacc += prediction.size - o_in_sentence
         total_loss += loss.value()
-    acc = correct / total
+    acc = correct / totalacc
     total_loss /= total
 
     return total_loss, acc
 
 
-def train_model(train, dev, network, trainer, W2I, T2I, num_iterations):
+def train_model(train, dev, network, trainer, W2I, T2I, num_iterations, save_file, droput1=0.0, droput2=0.0):
     dev_losses = list()
     dev_accs = list()
+    best_acc = -np.inf
     for I in xrange(num_iterations):
         total_loss = 0.0
         correct = 0.0
         total = 0.0
+        totalacc = 0.0
         for words, labels in train:
             dy.renew_cg()
             num_words = len(words) - 2
             # Convert
-            words_nums = [tuple([W2I[word] if word in W2I else W2I["unknown"] for word in words[i - 2:i + 3]]) for i in
+            words_nums = [tuple([W2I[word] if word in W2I else W2I["UUUNKKK"] for word in words[i - 2:i + 3]]) for i in
                           range(2, num_words)]
             labels_num = np.array([T2I[label] for label in labels[2:-2]])
-            loss, prediction = network.forward(words_nums, labels_num, 0.05)
+            loss, prediction = network.forward(words_nums, labels_num, droput1, droput2)
+            if "O" in T2I:
+                prediction = np.where(prediction == T2I["O"], -1, prediction)
+            o_in_sentence = 0.0
+            unique, counts = np.unique(prediction, return_counts=True)
+            pc = dict(zip(unique, counts))
+
+            if -1 in pc:
+                o_in_sentence = pc[-1]
             correct += np.sum(prediction == labels_num)
             total += prediction.size
+            totalacc += prediction.size - o_in_sentence
             total_loss += loss.value()
             loss.backward()
             trainer.update()
 
         dev_loss, dev_acc = test_data(dev, network, W2I, T2I)
+        if dev_acc > best_acc:
+            print "Replacing model, Before got:", best_acc, "% Now got:", dev_acc
+            network.save_model(save_file)
+            best_acc = dev_acc
         dev_losses.append(dev_loss)
         dev_accs.append(dev_acc)
 
         print "Itertation:", I
         print "Training Loss:", total_loss / total
-        print "Training Accuracy:", correct / total
+        print "Training Accuracy:", correct / totalacc
         print "Dev Loss:", dev_loss
         print "Dev Accuracy:", dev_acc
 
     return dev_losses, dev_accs
+
 
 # Plots the result of the training.
 def plot_results(history, title, ylabel, xlabel='Epoch'):
@@ -62,4 +91,3 @@ def plot_results(history, title, ylabel, xlabel='Epoch'):
     plt.ylabel(ylabel)
     plt.xlabel(xlabel)
     plt.show()
-

@@ -21,8 +21,13 @@ def parse_tag_reading(lines, seperator):
             sentence_labels = list()
     return words, labels
 
+def parse_vocab_reading(lines, seperator=None):
+    words = [line for line in lines]
+    W2I = {key: value for value, key in enumerate(words)}
+    return words, W2I
 
-def read_file(file_name, parse_func, seperator):
+
+def read_file(file_name, parse_func, seperator=None):
     file = open(file_name, 'r')
     lines = file.read().splitlines()
     file.close()
@@ -37,7 +42,7 @@ def write_file(file_name, content, parse_func, seperator):
 
 def create_mapping(data, frequency_for_mapping=0, ignore_elements= None):
     count = count_uniques(data)
-    possibles = set([x if count[x] > frequency_for_mapping else "unknown" for x in count])
+    possibles = set([x if count[x] > frequency_for_mapping else "UUUNKKK" for x in count])
     if ignore_elements != None:
         possibles = possibles.difference(ignore_elements)
     return {f: i for i, f in enumerate(list(sorted(possibles)))}
