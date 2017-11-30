@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def test_data(data, network, W2I, T2I):
+def test_data(data, network, ner=False):
     total_loss = 0.0
     correct = 0.0
     total = 0.0
@@ -12,22 +12,20 @@ def test_data(data, network, W2I, T2I):
     for words, labels in data:
         dy.renew_cg()
         num_words = len(words) - 2
-        words_nums = [tuple([W2I[word] if word in W2I else W2I["UUUNKKK"] for word in words[i - 2:i + 3]]) for i in
-                      range(2, num_words)]
-        labels_num = np.array([T2I[label] for label in labels[2:-2]])
+        words_nums = np.array([tuple(word for word in words[i - 2:i + 3]) for i in range(2, num_words)])
+        labels_num = np.array([label for label in labels[2:-2]])
         loss, prediction = network.forward(words_nums, labels_num)
-        if "O" in T2I:
-            prediction = np.where(prediction == T2I["O"], -1, prediction)
-        o_in_sentence = 0.0
-        unique, counts = np.unique(prediction, return_counts=True)
-        pc = dict(zip(unique, counts))
+        for i in range(0, prediction.size):
+            if prediction[i] == "O" and labels_num[i] == "O":
+                continue
+            elif prediction[i] == labels_num[i]:
+                correct += 1.0
+                #print "Correct, Predicted", prediction[i], "Real:", labels_num[i]
+            #else:
+             #   print "Wrong, Predicted", prediction[i], "Real:", labels_num[i]
 
-        if -1 in pc:
-            o_in_sentence = pc[-1]
-
-        correct += np.sum(prediction == labels_num)
+            totalacc += 1.0
         total += prediction.size
-        totalacc += prediction.size - o_in_sentence
         total_loss += loss.value()
     acc = correct / totalacc
     total_loss /= total
@@ -35,7 +33,7 @@ def test_data(data, network, W2I, T2I):
     return total_loss, acc
 
 
-def train_model(train, dev, network, trainer, W2I, T2I, num_iterations, save_file, droput1=0.0, droput2=0.0):
+def train_model(train, dev, network, trainer, num_iterations, save_file, droput1=0.0, droput2=0.0, ner=False):
     dev_losses = list()
     dev_accs = list()
     best_acc = -np.inf
@@ -48,28 +46,24 @@ def train_model(train, dev, network, trainer, W2I, T2I, num_iterations, save_fil
             dy.renew_cg()
             num_words = len(words) - 2
             # Convert
-            words_nums = [tuple([W2I[word] if word in W2I else W2I["UUUNKKK"] for word in words[i - 2:i + 3]]) for i in
-                          range(2, num_words)]
-            labels_num = np.array([T2I[label] for label in labels[2:-2]])
-            loss, prediction = network.forward(words_nums, labels_num, droput1, droput2)
-            if "O" in T2I:
-                prediction = np.where(prediction == T2I["O"], -1, prediction)
-            o_in_sentence = 0.0
-            unique, counts = np.unique(prediction, return_counts=True)
-            pc = dict(zip(unique, counts))
+            words_nums = np.array([tuple(word for word in words[i - 2:i + 3]) for i in range(2, num_words)])
 
-            if -1 in pc:
-                o_in_sentence = pc[-1]
-            correct += np.sum(prediction == labels_num)
+            labels_num = np.array([label.strip("\n") for label in labels[2:-2]])
+            loss, prediction = network.forward(words_nums, labels_num, droput1, droput2)
+            for i in range(0, prediction.size):
+                if prediction[i] == "O" and labels_num[i] == "O":
+                    continue
+                elif prediction[i] == labels_num[i]:
+                    correct += 1.0
+                totalacc += 1.0
+
             total += prediction.size
-            totalacc += prediction.size - o_in_sentence
             total_loss += loss.value()
             loss.backward()
             trainer.update()
 
-        dev_loss, dev_acc = test_data(dev, network, W2I, T2I)
+        dev_loss, dev_acc = test_data(dev, network, ner)
         if dev_acc > best_acc:
-            print "Replacing model, Before got:", best_acc, "% Now got:", dev_acc
             network.save_model(save_file)
             best_acc = dev_acc
         dev_losses.append(dev_loss)

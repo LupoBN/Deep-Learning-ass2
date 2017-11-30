@@ -2,7 +2,7 @@ import copy
 from collections import Counter
 
 
-def parse_tag_reading(lines, seperator):
+def parse_tag_reading(lines, seperator, lower=False):
     words = list()
     labels = list()
     sentence = list()
@@ -10,6 +10,8 @@ def parse_tag_reading(lines, seperator):
     for line in lines:
         if line != '':
             words_labels = line.rsplit(seperator, 1)
+            if lower:
+                words_labels[0] = words_labels[0].lower()
             sentence.append(words_labels[0])
             sentence_labels.append(words_labels[1])
         else:
@@ -21,17 +23,42 @@ def parse_tag_reading(lines, seperator):
             sentence_labels = list()
     return words, labels
 
-def parse_vocab_reading(lines, seperator=None):
+
+def parse_vocab_reading(lines, seperator=None, lower=False):
     words = [line for line in lines]
     W2I = {key: value for value, key in enumerate(words)}
     return words, W2I
 
 
-def read_file(file_name, parse_func, seperator=None):
+def sub_words_mapping(sentences, start):
+    prefixes_words = [["Pre-" + word[0:3] if len(word) >= 3 else "lessthanthree"] for sentence in sentences for word in
+                      sentence[0]]
+    suffixes_words = [["Suf-" + word[-4:-1] if len(word) >= 3 else "lessthanthree"] for sentence in sentences for word
+                      in sentence[0]]
+    count_prefixes = count_uniques(prefixes_words)
+    count_suffixes = count_uniques(suffixes_words)
+    del count_prefixes["lessthanthree"]
+    del count_suffixes["lessthanthree"]
+    possibles_prefixes = set([x if count_prefixes[x] > 3 else "Pre-UNK" for x in count_prefixes])
+    possibles_suffixes = set([x if count_suffixes[x] > 3 else "Suf-UNK" for x in count_suffixes])
+    sub_map = dict()
+    for pre in possibles_prefixes:
+        if pre not in sub_map:
+            sub_map[pre] = start
+            start += 1
+    for suf in possibles_suffixes:
+        if suf not in sub_map:
+            sub_map[suf] = start
+            start += 1
+
+    return sub_map
+
+
+def read_file(file_name, parse_func, seperator=None, lower=False):
     file = open(file_name, 'r')
     lines = file.read().splitlines()
     file.close()
-    return parse_func(lines, seperator)
+    return parse_func(lines, seperator, lower)
 
 
 def write_file(file_name, content, parse_func, seperator):
@@ -40,7 +67,7 @@ def write_file(file_name, content, parse_func, seperator):
     file.close()
 
 
-def create_mapping(data, frequency_for_mapping=0, ignore_elements= None):
+def create_mapping(data, frequency_for_mapping=0, ignore_elements=None):
     count = count_uniques(data)
     possibles = set([x if count[x] > frequency_for_mapping else "UUUNKKK" for x in count])
     if ignore_elements != None:
