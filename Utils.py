@@ -39,8 +39,8 @@ def sub_words_mapping(sentences, start):
     count_suffixes = count_uniques(suffixes_words)
     del count_prefixes["lessthanthree"]
     del count_suffixes["lessthanthree"]
-    possibles_prefixes = set([x if count_prefixes[x] > 3 else "Pre-UNK" for x in count_prefixes])
-    possibles_suffixes = set([x if count_suffixes[x] > 3 else "Suf-UNK" for x in count_suffixes])
+    possibles_prefixes = set([x if count_prefixes[x] > 2 else "Pre-UNK" for x in count_prefixes])
+    possibles_suffixes = set([x if count_suffixes[x] > 2 else "Suf-UNK" for x in count_suffixes])
     sub_map = dict()
     for pre in possibles_prefixes:
         if pre not in sub_map:
