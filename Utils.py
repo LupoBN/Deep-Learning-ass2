@@ -13,7 +13,8 @@ def parse_tag_reading(lines, seperator, lower=False):
             if lower:
                 words_labels[0] = words_labels[0].lower()
             sentence.append(words_labels[0])
-            sentence_labels.append(words_labels[1])
+            if len(words_labels) > 1:
+                sentence_labels.append(words_labels[1])
         else:
             sentence = ["^^^^^", "^^^^^"] + sentence + ["$$$$$", "$$$$$"]
             sentence_labels = ["Start-", "Start-"] + sentence_labels + ["End-", "End-"]
@@ -27,10 +28,13 @@ def parse_tag_reading(lines, seperator, lower=False):
 def parse_vocab_reading(lines, seperator=None, lower=False):
     words = [line for line in lines]
     W2I = {key: value for value, key in enumerate(words)}
+    W2I["^^^^^"] = len(W2I)
+    W2I["$$$$$"] = len(W2I)
+
     return words, W2I
 
 
-def sub_words_mapping(sentences, start):
+def sub_words_mapping(sentences, start, most_to_take):
     prefixes_words = [["Pre-" + word[0:3] if len(word) >= 3 else "lessthanthree"] for sentence in sentences for word in
                       sentence[0]]
     suffixes_words = [["Suf-" + word[-4:-1] if len(word) >= 3 else "lessthanthree"] for sentence in sentences for word
@@ -39,8 +43,11 @@ def sub_words_mapping(sentences, start):
     count_suffixes = count_uniques(suffixes_words)
     del count_prefixes["lessthanthree"]
     del count_suffixes["lessthanthree"]
-    possibles_prefixes = set([x if count_prefixes[x] > 2 else "Pre-UNK" for x in count_prefixes])
-    possibles_suffixes = set([x if count_suffixes[x] > 2 else "Suf-UNK" for x in count_suffixes])
+    possibles_prefixes = set([x for x, l in count_prefixes.most_common(most_to_take)])
+    possibles_suffixes = set([x for x, l in count_suffixes.most_common(most_to_take)])
+    possibles_prefixes.add("Pre-UNK")
+    possibles_suffixes.add("Suf-UNK")
+
     sub_map = dict()
     for pre in possibles_prefixes:
         if pre not in sub_map:
@@ -67,11 +74,14 @@ def write_file(file_name, content, parse_func, seperator):
     file.close()
 
 
-def create_mapping(data, frequency_for_mapping=0, ignore_elements=None):
+def create_mapping(data, ignore_elements=None, most_to_take=15000):
     count = count_uniques(data)
-    possibles = set([x if count[x] > frequency_for_mapping else "UUUNKKK" for x in count])
+    possibles = set([x for x, l in count.most_common(most_to_take)])
     if ignore_elements != None:
         possibles = possibles.difference(ignore_elements)
+    else:
+        possibles.add("UUUNKKK")
+
     return {f: i for i, f in enumerate(list(sorted(possibles)))}
 
 

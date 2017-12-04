@@ -10,9 +10,11 @@ class MLPNetwork(object):
         for i in range(0, num_params, 2):
             self._expressions.append(pc.add_parameters((dims[i + 1], dims[i])))
             self._expressions.append(pc.add_parameters(dims[i + 1]))
-        self._lookup = pc.add_lookup_parameters((vocab_size, dims[0] / 5))
-        if pre_lookup is not None:
-            self._lookup.init_from_array(pre_lookup)
+        if pre_lookup is None:
+            self._lookup = pc.add_lookup_parameters((vocab_size, dims[0] / 5))
+        else:
+            self._lookup = pc.lookup_parameters_from_numpy(pre_lookup)
+
         self._pc = pc
         self._W2I = W2I
         self._T2I = T2I
@@ -34,10 +36,10 @@ class MLPNetwork(object):
         x = self._words_operation(inputs)
         if droput1 != 0.0:
             x = dy.dropout_batch(x, droput1)
+        second_layer_activation = dy.tanh(params[0] * x + params[1])
         if droput2 != 0.0:
-            params[0] = dy.dropout(params[0], droput2)
-        scores_sym = params[2] * dy.tanh(
-            params[0] * x + params[1]) + params[3]
+            second_layer_activation = dy.dropout(second_layer_activation, droput2)
+        scores_sym = params[2] * second_layer_activation + params[3]
         return scores_sym
 
     def forward(self, inputs, expected_output, droput1=0.0, droput2=0.0):
@@ -52,6 +54,19 @@ class MLPNetwork(object):
             predictions = np.array([np.argmax(predictions_probs)])
         predictions = np.array([self._I2T[prediction] for prediction in predictions])
         return loss, predictions
+
+    def predict(self, inputs):
+        out = self(inputs)
+        predictions_probs = out.npvalue()
+
+        if len(predictions_probs.shape) == 2:
+            predictions = np.argmax(predictions_probs.T, axis=1)
+        else:
+            predictions = np.array([np.argmax(predictions_probs)])
+        predictions = np.array([self._I2T[prediction] for prediction in predictions])
+        return predictions
+
+
 
     def save_model(self, file_name):
         self._pc.save(file_name)
@@ -70,6 +85,7 @@ class MLPNetowrkSubWords(MLPNetwork):
         num_prefixes = [
             tuple([self._W2I["Pre-" + word[0:3]] if "Pre-" + word[0:3] in self._W2I else self._W2I["Pre-UNK"]
                    for word in quid]) for quid in inputs]
+
         num_suffixes = [tuple([self._W2I["Suf-" + word[-4:-1]] if "Suf-" + word[-4:-1] in self._W2I
                                else self._W2I["Suf-UNK"] for word in quid]) for quid in inputs]
         word_batches = [self._create_word_batch(num_inputs, i) for i in range(0, 5)]
