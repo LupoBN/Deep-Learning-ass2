@@ -24,17 +24,21 @@ def parse_tag_reading(lines, seperator, lower=False):
             sentence_labels = list()
     return words, labels
 
-
-def parse_vocab_reading(lines, seperator=None, lower=False):
+def parse_vocab_words_reading(lines, seperator=None, lower=False):
     words = [line for line in lines]
     W2I = {key: value for value, key in enumerate(words)}
-    W2I["^^^^^"] = len(W2I)
-    W2I["$$$$$"] = len(W2I)
 
     return words, W2I
 
 
-def sub_words_mapping(sentences, start, most_to_take):
+def parse_vocab_reading(lines, seperator=None, lower=False):
+    words = [line for line in lines]
+    W2I = {key: value for value, key in enumerate(words)}
+
+    return W2I
+
+
+def sub_words_mapping(sentences, start, most_to_take=5002):
     prefixes_words = [["Pre-" + word[0:3] if len(word) >= 3 else "lessthanthree"] for sentence in sentences for word in
                       sentence[0]]
     suffixes_words = [["Suf-" + word[-4:-1] if len(word) >= 3 else "lessthanthree"] for sentence in sentences for word

@@ -48,7 +48,7 @@ def test_data(data, network):
     return total_loss, acc
 
 
-def train_model(train, dev, network, trainer, num_iterations, save_file, droput1=0.0, droput2=0.0, ner=False):
+def train_model(train, dev, network, trainer, num_iterations, save_file, droput1=0.0, droput2=0.0):
     dev_losses = list()
     dev_accs = list()
     best_acc = -np.inf
