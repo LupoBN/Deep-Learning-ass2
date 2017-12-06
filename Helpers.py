@@ -80,7 +80,7 @@ def train_model(train, dev, network, trainer, num_iterations, save_file, droput1
             trainer.update()
         dev_loss, dev_acc = test_data(dev, network)
         if dev_acc > best_acc:
-            network.save_model(save_file)
+            #network.save_model(save_file)
             best_acc = dev_acc
         dev_losses.append(dev_loss)
         dev_accs.append(dev_acc)
